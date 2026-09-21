@@ -25,7 +25,12 @@ The supplied `IMPLEMENTATION_PLAN_FINAL1.md` is the design reference; the origin
 - Atlas connectivity and hosted Change Streams.
 - Vercel deployment and cross-session reconnect.
 - Docker execution (Docker is not installed on this workstation).
-- GitHub repository destination and publication.
+
+## Source repository
+
+- Private GitHub repository: https://github.com/hbubh/signcraft-operations
+- Source, schema, tests, scripts, public files, dependency lockfile, documentation, container configuration, and `.env.example` are included.
+- `.env`, `.local/`, `node_modules/`, and `.next/` are excluded from version control and publication.
 
 ## Executed local verification
 
