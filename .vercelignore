@@ -1,10 +1,11 @@
+.git/
+.local/
+.env
+.env.*
 node_modules/
 .next/
 .vercel/
-.env*
-!.env.example
 coverage/
 test-results/
 playwright-report/
-.local/
 *.tsbuildinfo

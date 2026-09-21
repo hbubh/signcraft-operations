@@ -140,7 +140,7 @@ R2 support is implemented but **not externally verified**. Set the R2 variables 
 
 Authenticated SSE watches inserted `OrderEvent` records through native MongoDB Change Streams. Events contain only a scope invalidation signal. Vendor visibility is checked against current order ownership; installers receive only job-related invalidations, never history bodies or contact data. TanStack Query refreshes authoritative views. Upload-byte progress remains local to the uploading browser.
 
-Connections heartbeat every 15 seconds and close at 50 seconds to bound function duration. Reconnect uses exponential backoff (up to 30 seconds), refreshes queries, and shows connection status. A manual refresh is always available. There is no interval-based database polling. Hosted SSE and reconnection still require a Vercel smoke test.
+Connections heartbeat every 15 seconds and close at 50 seconds to bound function duration. Reconnect uses exponential backoff (up to 30 seconds), refreshes queries, and shows connection status. A manual refresh is always available. There is no interval-based database polling. Hosted verification passed: existing Manager and Vendor sessions received installation-completion updates without refreshing; both sessions rotated and reconnected successfully. A quiet 20-second browser observation found no database-query HTTP polling, and source review confirmed that intervals only drive the local countdown and SSE heartbeat.
 
 ## Configuration
 
@@ -182,6 +182,8 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+To run the same browser checks against the deployed assignment, set `PLAYWRIGHT_BASE_URL=https://signcraft-operations.vercel.app` before `npm run test:e2e`. These tests create fictional demo orders and exercise claims; run them only against a dedicated demo database. The concurrency test releases its winning reservation through the explicit demo-failure flow.
+
 Integration tests launch a separate real MongoDB replica set with an isolated database. They never reset the configured application database. Tests cover the legal/illegal lifecycle matrix, roles, stale revisions, 20 concurrent claims, independent Node processes, expiry/reclaim, stale claim IDs, verification ownership/failure, terminal assignment, transactional completion, upload size checks, forged receipts, and abort. Browser tests exercise the full manager/vendor/installer flow and mobile layout. Browser tests add uniquely named fictional orders to the running demo database.
 
 ## Reviewer walkthrough
@@ -197,8 +199,16 @@ Integration tests launch a separate real MongoDB replica set with an isolated da
 
 ## Deployment and known limits
 
-Connect the repository to Vercel, select Node 24, configure Atlas with a replica set and network access, set environment variables, apply indexes and seed the dedicated demo database, and deploy. Then verify all role logins, cross-session SSE, reconnect, claims, and expiry on the hosted environment. R2 is optional; the simulation mode satisfies the assignment's upload simulation requirement.
+Production: **https://signcraft-operations.vercel.app**. Vercel is connected to the private GitHub repository's `main` branch, with the Next.js preset and Node 24. Atlas uses the dedicated `signcraft_operations` database. Connectivity, replica-set transactions, `npm run db:push`, `npm run db:seed`, and all six seeded account password hashes were verified. The local database configuration and data were preserved.
 
-The private source repository is [hbubh/signcraft-operations](https://github.com/hbubh/signcraft-operations). No hosted application URL has been published yet; Atlas/Vercel configuration remains pending. See `IMPLEMENTATION_STATUS.md` for deviations and outstanding external checks. The installer board is bounded to 200 jobs; order search is paginated. Optional readiness heuristics, matching scores, admin overrides, and the manager concurrency-demo button are omitted.
+Vercel production variables are `DATABASE_URL`, a randomly generated `AUTH_SECRET`, `AUTH_URL=https://signcraft-operations.vercel.app`, `AUTH_TRUST_HOST=true`, `UPLOAD_MODE=simulation`, and `DEMO_MODE=true`. Secrets are stored in Vercel, never in Git. Development and preview environments are not given the production database credentials. `.vercelignore` also excludes local databases, environment files, dependencies, and generated artifacts from CLI deployment uploads.
+
+Atlas network access permits `0.0.0.0/0` for this isolated assignment project because the Vercel Hobby deployment has dynamic outbound IPs. Database authentication remains required. For a hardened deployment, use fixed egress and a restricted allowlist. After changing Atlas access, redeploy if an already-running Prisma connection retains a failed topology: the initial network/transaction errors cleared after a fresh deployment.
+
+Production verification passed on 2026-09-21: all role logins; Manager draft, simulated upload and submission; Vendor acceptance, production and readiness; Installer claim, changing countdown, identity and payment simulation, and completion; Manager completion and activity history; Manager/Vendor live updates and reconnect; and 20 simultaneous authenticated claims yielding exactly one 200 and nineteen 409 responses. All five hosted Playwright tests passed. TypeScript, ESLint, 54 unit tests, eight isolated MongoDB integration tests, and the Vercel production build passed. This is demo-scale verification, not a sustained-load test.
+
+R2 remains disabled, optional, and externally unverified. Upload, identity, and payment behavior remains explicitly simulated.
+
+The private source repository is [hbubh/signcraft-operations](https://github.com/hbubh/signcraft-operations). See `IMPLEMENTATION_STATUS.md` for verification and outstanding external checks. The installer board is bounded to 200 jobs; order search is paginated. Optional readiness heuristics, matching scores, admin overrides, and the manager concurrency-demo button are omitted.
 
 The dependency audit currently reports advisories in Prisma CLI's transitive `effect` and `deepmerge-ts` dependencies. They are development/build dependencies, not the shipped standalone request path. Prisma remains pinned for MongoDB compatibility; no automatic major upgrade or unsupported override was applied.

@@ -73,6 +73,8 @@ test("complete manager/vendor/installer workflow and responsive layout", async (
   await card.getByRole("button", { name: "Claim installation" }).click();
   await installer.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(card.getByText(/remaining/)).toBeVisible();
+  const initialCountdown = await card.getByText(/remaining/).textContent();
+  await expect(card.getByText(/remaining/)).not.toHaveText(initialCountdown!);
   for (const kind of ["identity", "payment"]) {
     await card
       .getByRole("button", { name: `Verify ${kind}`, exact: true })
@@ -85,14 +87,32 @@ test("complete manager/vendor/installer workflow and responsive layout", async (
   await card.getByRole("button", { name: "Complete installation" }).click();
   await installer.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(card.getByText("Completed", { exact: true })).toBeVisible();
+  // The vendor's already-open details must also update without a refresh.
+  await expect(
+    vendor
+      .locator(".detail-drawer")
+      .getByText("Completed", { exact: true })
+      .first(),
+  ).toBeVisible();
   // The manager's existing session must update through SSE, without a manual refresh.
-  await expect(page.locator('tbody tr').filter({has:page.getByRole('button',{name:title,exact:true})}).getByText('Completed',{exact:true})).toBeVisible();
+  await expect(
+    page
+      .locator("tbody tr")
+      .filter({ has: page.getByRole("button", { name: title, exact: true }) })
+      .getByText("Completed", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: title, exact: true }).click();
   await expect(
     page
       .locator(".detail-drawer")
       .getByText("Completed", { exact: true })
       .first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Activity history" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".timeline").getByText("Order completed", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close order details" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -119,11 +139,12 @@ test("unauthenticated API calls are rejected", async ({ request }) => {
 
 test("20 HTTP claims from three authenticated installers yield one winner", async ({
   playwright,
+  baseURL,
 }) => {
   const contexts = await Promise.all(
     [1, 2, 3].map(async (n) => {
       const context = await playwright.request.newContext({
-        baseURL: "http://localhost:3000",
+        baseURL,
       });
       const { csrfToken } = await (await context.get("/api/auth/csrf")).json();
       await context.post("/api/auth/callback/credentials", {
@@ -131,7 +152,7 @@ test("20 HTTP claims from three authenticated installers yield one winner", asyn
           csrfToken,
           email: `installer${n}@signcraft.demo`,
           password: "SignCraft!2026",
-          callbackUrl: "http://localhost:3000",
+          callbackUrl: baseURL ?? "http://localhost:3000",
         },
       });
       expect((await context.get("/api/me")).status()).toBe(200);
