@@ -1,0 +1,34 @@
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports: ["127.0.0.1:27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+  setup:
+    build:
+      context: .
+      target: build
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/signcraft?replicaSet=rs0
+    command: sh -c "npx prisma db push && npx tsx prisma/seed.ts"
+    depends_on:
+      mongo: { condition: service_healthy }
+  app:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/signcraft?replicaSet=rs0
+      AUTH_SECRET: ${AUTH_SECRET:?Set a random AUTH_SECRET in .env}
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      UPLOAD_MODE: simulation
+      DEMO_MODE: "true"
+    depends_on:
+      setup: { condition: service_completed_successfully }
+volumes:
+  mongo-data:

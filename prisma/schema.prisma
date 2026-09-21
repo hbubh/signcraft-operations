@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mongodb"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  MANAGER
+  VENDOR
+  INSTALLER
+}
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  VENDOR_ACCEPTED
+  IN_PRODUCTION
+  READY_FOR_INSTALL
+  COMPLETED
+  CANCELLED
+}
+enum JobStatus {
+  AVAILABLE
+  RESERVED
+  ASSIGNED
+  COMPLETED
+}
+enum VerificationStatus {
+  NOT_STARTED
+  PASSED
+  FAILED
+}
+enum AssetStatus {
+  UPLOADING
+  COMPLETED
+  FAILED
+  ABORTED
+}
+model User {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  email String @unique
+  name String
+  passwordHash String
+  role Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Order {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  customerBusiness String
+  customerContactName String
+  customerContactEmail String
+  signageDescription String
+  quantity Int
+  installationAddress String
+  requestedInstallationDate String
+  price Int
+  notes String @default("")
+  vendorId String @db.ObjectId
+  creatorId String @db.ObjectId
+  status OrderStatus @default(DRAFT)
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([vendorId, status])
+  @@index([status, requestedInstallationDate])
+}
+model InstallationJob {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId String @unique @db.ObjectId
+  status JobStatus @default(AVAILABLE)
+  claimId String?
+  reservedByInstallerId String? @db.ObjectId
+  assignedInstallerId String? @db.ObjectId
+  reservedAt DateTime?
+  expiresAt DateTime?
+  identityVerificationStatus VerificationStatus @default(NOT_STARTED)
+  paymentVerificationStatus VerificationStatus @default(NOT_STARTED)
+  completedAt DateTime?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, expiresAt])
+  @@index([assignedInstallerId])
+}
+model Asset {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId String @db.ObjectId
+  uploaderId String @db.ObjectId
+  objectKey String @unique
+  originalFilename String
+  declaredSize Float
+  verifiedSize Float?
+  contentType String
+  multipartUploadId String?
+  mode String
+  status AssetStatus @default(UPLOADING)
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([orderId])
+}
+model OrderEvent {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId String @db.ObjectId
+  actorId String @db.ObjectId
+  actorRole Role
+  eventType String
+  orderRevision Int
+  timestamp DateTime @default(now())
+  details Json
+  @@index([orderId, timestamp])
+}
+model LoginAttempt {
+  id String @id @map("_id")
+  count Int @default(1)
+  expiresAt DateTime
+}
